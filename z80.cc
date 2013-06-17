@@ -6,18 +6,23 @@ using namespace std;
 
 Z80::Z80()
 {
-  memset(this->_memory, 0, sizeof(this->_memory));
+  memset(this->memory, 0, sizeof(this->memory));
 
-  this->_sp = 0;
-  this->_pc = 0;
+  this->sp = 0;
+  this->pc = 0;
+}
+
+uint16_t Z80::combine_uint8_to_uint16(uint8_t h, uint8_t l)
+{
+  uint16_t ret = h;
+  ret <<= 8;
+  ret |= l;
+  return ret;
 }
 
 uint16_t Z80::hl()
 {
-    uint16_t addr = this->_rh;
-    addr <<= 8;
-    addr |=  this->_rl;
-    return addr;
+    return this->combine_uint8_to_uint16(this->rh, this->rl);
 }
 
 uint8_t Z80::r(uint8_t ri)
@@ -25,21 +30,21 @@ uint8_t Z80::r(uint8_t ri)
   switch(ri)
   {
     case 0:
-      return this->_rb;
+      return this->rb;
     case 1:
-      return this->_rc;
+      return this->rc;
     case 2:
-      return this->_rd;
+      return this->rd;
     case 3:
-      return this->_re;
+      return this->re;
     case 4:
-      return this->_rh;
+      return this->rh;
     case 5:
-      return this->_rl;
+      return this->rl;
     case 6:
-      return this->_memory[this->hl()];
+      return this->get_mem(this->hl());
     case 7:
-      return this->_ra;
+      return this->ra;
     default:
       return -1;
   }
@@ -50,42 +55,52 @@ void Z80::r(uint8_t ri, uint8_t val)
   switch(ri)
   {
     case 0:
-      this->_rb = val;
+      this->rb = val;
       break;
     case 1:
-      this->_rc = val;
+      this->rc = val;
       break;
     case 2:
-      this->_rd = val;
+      this->rd = val;
       break;
     case 3:
-      this->_re = val;
+      this->re = val;
       break;
     case 4:
-      this->_rh = val;
+      this->rh = val;
       break;
     case 5:
-      this->_rl = val;
+      this->rl = val;
       break;
     case 6:
-      this->_memory[this->hl()] = val;
+      this->set_mem(this->hl(), val);
       break;
     case 7:
-      this->_ra = val;
+      this->ra = val;
       break;
   }
 }
 
+void Z80::set_mem(uint16_t addr, uint8_t val)
+{
+  this->memory[addr] = val;
+}
+
+uint8_t Z80::get_mem(uint16_t addr)
+{
+  return this->memory[addr];
+}
+
 void Z80::decode_1b(uint8_t opcode)
 {
-  this->_x = (opcode & 0xC0) >> 6;
-  this->_y = (opcode & 0x38) >> 3;
-  this->_z = opcode & 0x07;
+  this->x = (opcode & 0xC0) >> 6;
+  this->y = (opcode & 0x38) >> 3;
+  this->z = opcode & 0x07;
 }
 
 uint8_t Z80::fetch()
 {
-  return this->_memory[this->_pc++];
+  return this->get_mem(this->pc++);
 }
 
 void Z80::execute(uint8_t opcode)
@@ -99,7 +114,7 @@ void Z80::execute(uint8_t opcode)
   else
   {
     printf("Unrecognised opcode %02X\n", opcode);
-    this->_running = false;
+    this->running = false;
   }
 }
 
@@ -111,59 +126,67 @@ void Z80::instruction_NOP(Z80* cpu, uint8_t opcode)
 void Z80::instruction_HALT(Z80* cpu, uint8_t opcode)
 {
   // HLT
-  cpu->_running = false;
+  cpu->pc--;
 }
 
 void Z80::instruction_LDR(Z80* cpu, uint8_t opcode)
 {
   // LD r[y], r[z]
   cpu->decode_1b(opcode);
-  uint8_t val = cpu->r(cpu->_z);
-  cpu->r(cpu->_y, val);
+  uint8_t val = cpu->r(cpu->z);
+  cpu->r(cpu->y, val);
 }
 
 void Z80::instruction_LDI(Z80* cpu, uint8_t opcode)
 {
   // LD r[y], n
   cpu->decode_1b(opcode);
-  cpu->r(cpu->_y, cpu->fetch());
+  cpu->r(cpu->y, cpu->fetch());
 }
 
 void Z80::instruction_INC(Z80* cpu, uint8_t opcode)
 {
   // INC r[y]
   cpu->decode_1b(opcode);
-  uint8_t val = cpu->r(cpu->_y) + 1;
-  cpu->r(cpu->_y, val);
+  uint8_t val = cpu->r(cpu->y) + 1;
+  cpu->r(cpu->y, val);
 }
 
 void Z80::instruction_DEC(Z80* cpu, uint8_t opcode)
 {
   // INC r[y]
   cpu->decode_1b(opcode);
-  uint8_t val = cpu->r(cpu->_y) - 1;
-  cpu->r(cpu->_y, val);
+  uint8_t val = cpu->r(cpu->y) - 1;
+  cpu->r(cpu->y, val);
+}
+
+void Z80::instruction_JMP(Z80* cpu, uint8_t opcode)
+{
+  uint8_t l = cpu->fetch();
+  uint8_t h = cpu->fetch();
+  cpu->pc = cpu->combine_uint8_to_uint16(h, l);
 }
 
 void Z80::run()
 {
-  this->_running = true;
+  this->running = true;
 
-  while(this->_running)
+  while(this->running)
   {
     uint8_t opcode = this->fetch();
     this->execute(opcode);
+    this->dump_registers();
   }
 }
 
-void Z80::set_memory(uint16_t dst, uint8_t* src, uint16_t size)
+void Z80::set_memory(uint8_t* src, uint16_t size)
 {
-  memcpy(&this->_memory[dst], src, size);
+  memcpy(this->memory, src, size);
 }
 
 void Z80::dump_registers()
 {
-  printf("\nA: %u\tB: %u\tC: %u\tD: %u\n", this->_ra, this->_rb, this->_rc, this->_rd);
-  printf("E: %u\tF: %u\tH: %u\tL: %u\n", this->_re, this->_rf, this->_rh, this->_rl);
-  printf("HL: %u\n\n", this->_memory[this->hl()]);
+  printf("\nA=%u\tB=%u\tC=%u\tD=%u\n", this->ra, this->rb, this->rc, this->rd);
+  printf("E=%u\tF=%u\tH=%u\tL=%u\n", this->re, this->rf, this->rh, this->rl);
+  printf("PC=%u\tSP=%u\tHL=%u\n\n", this->pc, this->sp, this->memory[this->hl()]);
 }

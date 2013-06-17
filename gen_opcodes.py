@@ -22,6 +22,10 @@ for n in xrange(0x00, 0x100):
 
     if z == 6 and y == 6:
       opcode = 'HALT'
+  if x == 3:
+    if z == 3:
+      if y == 0:
+        opcode = 'JMP'
 
   opcodes[n] = 'instruction_'+opcode if opcode != '0' else '0'
 

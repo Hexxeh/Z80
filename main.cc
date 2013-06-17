@@ -8,10 +8,8 @@ using namespace std;
 int main()
 {
   Z80 cpu;
-  uint8_t program[] = {0x3C, 0x76};
-  cpu.set_memory(0, program, 2);
-  cpu.dump_registers();
+  uint8_t program[] = {0x3C, 0xC3, 0x00};
+  cpu.set_memory(program, 2);
   cpu.run();
-  cpu.dump_registers();
   return 0;
 }
