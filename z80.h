@@ -7,6 +7,14 @@ class Z80
   private:
     static const uint32_t mem_size = 65536;
 
+    /* rf bit meanings:
+
+        0: carry - result did not fit in register
+        1: subtract - was last operation a subtraction
+        2: parity/overflow - 
+
+    */
+
     uint8_t ra, rb, rc, rd, re, rf, rh, rl;
     uint16_t sp, pc;
     uint8_t memory[mem_size];
@@ -19,6 +27,15 @@ class Z80
     static const decode_func_t opcodes[256];  
 
     uint16_t combine_uint8_to_uint16(uint8_t h, uint8_t l);
+    bool is_parity_odd(uint8_t val);
+
+    void set_flag_bit(uint8_t bit_num, bool set);
+    bool get_flag_bit(uint8_t bit_num);
+
+    void flags_update_zero(uint8_t val);
+    bool flags_get_zero();
+    void flags_update_sign(uint8_t val);
+    void flags_update_subtract(bool subtract);
 
     void r(uint8_t ri, uint8_t val);
     uint8_t r(uint8_t ri);
@@ -38,6 +55,7 @@ class Z80
     static void instruction_INC(Z80* cpu, uint8_t opcode);
     static void instruction_DEC(Z80* cpu, uint8_t opcode);
     static void instruction_JMP(Z80* cpu, uint8_t opcode);
+    static void instruction_JP(Z80* cpu, uint8_t opcode);
 
   public:
     Z80();
