@@ -2,6 +2,10 @@ CFLAGS=-Wall
 SOURCES=z80.cc main.cc
 EXECUTABLE=z80
 
+ifeq ($(DEBUG),1)
+	CFLAGS += -DDEBUG
+endif
+
 all: z80_opcodes.h $(EXECUTABLE)
 
 z80_opcodes.h:

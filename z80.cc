@@ -4,7 +4,7 @@
 #include "z80_opcodes.h"
 
 // How long to wait between CPU cycles (ms)
-#define CPU_CYCLE_DELAY 200
+#define CPU_CYCLE_DELAY 400
 
 using namespace std;
 
@@ -277,8 +277,10 @@ void Z80::run()
   {
     uint8_t opcode = this->fetch();
     this->execute(opcode);
-    this->dump_registers();
-    usleep(CPU_CYCLE_DELAY * 1000);
+    #ifdef DEBUG
+      this->dump_registers();
+      usleep(CPU_CYCLE_DELAY * 1000);
+    #endif
   }
 }
 
@@ -291,5 +293,12 @@ void Z80::dump_registers()
 {
   printf("\nA=%u\tB=%u\tC=%u\tD=%u\n", this->ra, this->rb, this->rc, this->rd);
   printf("E=%u\tF=%u\tH=%u\tL=%u\n", this->re, this->rf, this->rh, this->rl);
-  printf("PC=%u\tSP=%u\tHL=%u\n\n", this->pc, this->sp, this->memory[this->hl()]);
+  printf("PC=%u\tSP=%u\tHL=%u\nmem: ", this->pc, this->sp, this->memory[this->hl()]);
+
+  const int lookahead_size = 5;
+  for(int i = this->pc; i < sizeof(this->memory) && i < this->pc+lookahead_size; i++)
+  {
+    printf("0x%02X ", this->memory[i]);
+  }
+  printf("\n\n");
 }
