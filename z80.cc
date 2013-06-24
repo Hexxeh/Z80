@@ -1,6 +1,10 @@
 #include <iostream>
+#include <unistd.h>
 #include "z80.h"
 #include "z80_opcodes.h"
+
+// How long to wait between CPU cycles (ms)
+#define CPU_CYCLE_DELAY 200
 
 using namespace std;
 
@@ -274,7 +278,7 @@ void Z80::run()
     uint8_t opcode = this->fetch();
     this->execute(opcode);
     this->dump_registers();
-    sleep(1);
+    usleep(CPU_CYCLE_DELAY * 1000);
   }
 }
 
