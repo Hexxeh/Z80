@@ -2,7 +2,9 @@ CFLAGS=-Wall
 SOURCES=z80.cc main.cc
 EXECUTABLE=z80
 
-ifeq ($(DEBUG),1)
+ifeq ($(DEBUG),0)
+	CFLAGS += -O2
+else
 	CFLAGS += -DDEBUG
 endif
 

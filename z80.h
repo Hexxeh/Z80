@@ -7,6 +7,13 @@ class Z80
   private:
     static const uint32_t mem_size = 65536;
 
+    static const uint8_t flag_carry = 0;
+    static const uint8_t flag_subtract = 1;
+    static const uint8_t flag_parityoverflow = 2;
+    static const uint8_t flag_halfcarry = 4;
+    static const uint8_t flag_zero = 6;
+    static const uint8_t flag_sign = 7;
+
     /* rf bit meanings:
 
         0: carry - result did not fit in register
@@ -28,6 +35,7 @@ class Z80
 
     uint16_t combine_uint8_to_uint16(uint8_t h, uint8_t l);
     bool is_parity_odd(uint8_t val);
+    bool is_bit_set(uint16_t val, uint8_t bit_num);
 
     void set_flag_bit(uint8_t bit_num, bool set);
     bool get_flag_bit(uint8_t bit_num);
@@ -56,6 +64,7 @@ class Z80
     static void instruction_DEC(Z80* cpu, uint8_t opcode);
     static void instruction_JMP(Z80* cpu, uint8_t opcode);
     static void instruction_JP(Z80* cpu, uint8_t opcode);
+    static void instruction_ALU(Z80* cpu, uint8_t opcode);
 
   public:
     Z80();

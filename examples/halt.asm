@@ -1,0 +1,2 @@
+org 0x0
+HALT

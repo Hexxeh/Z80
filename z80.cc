@@ -1,4 +1,5 @@
 #include <iostream>
+#include <bitset>
 #include <unistd.h>
 #include "z80.h"
 #include "z80_opcodes.h"
@@ -26,13 +27,14 @@ uint16_t Z80::combine_uint8_to_uint16(uint8_t h, uint8_t l)
 
 bool Z80::is_parity_odd(uint8_t val)
 {
-  int num_one = 0;
-  for(int bit_num = 0; bit_num <= 7; bit_num++)
-  {
-    if(!!(val | (1 << bit_num))) num_one++;
-  }
+  std::bitset<8> bits(val);
+  return (bits.count() % 2) != 0;
+}
 
-  return (num_one % 2) != 0;
+bool Z80::is_bit_set(uint16_t val, uint8_t bit_num)
+{
+  std::bitset<16> bits(val);
+  return bits[bit_num];
 }
 
 void Z80::set_flag_bit(uint8_t bit_num, bool set)
@@ -49,27 +51,26 @@ void Z80::set_flag_bit(uint8_t bit_num, bool set)
 
 bool Z80::get_flag_bit(uint8_t bit_num)
 {
-  return !((this->rf >> bit_num)  & 0x01);
+  return this->is_bit_set(this->rf, bit_num);
 }
 
 void Z80::flags_update_zero(uint8_t val)
 {
-  this->set_flag_bit(6, val == 0);
-}
-
-bool Z80::flags_get_zero()
-{
-  return this->get_flag_bit(6);
+  this->set_flag_bit(this->flag_zero, val == 0);
 }
 
 void Z80::flags_update_sign(uint8_t val)
 {
-  this->set_flag_bit(7, !!(val & 0x80));
+  this->set_flag_bit(this->flag_sign, this->is_bit_set(val, 7));
+  if(this->is_bit_set(val, 7))
+    {
+      cout << "we're negative!" << endl;
+    }
 }
 
 void Z80::flags_update_subtract(bool subtract)
 {
-  this->set_flag_bit(1, subtract);
+  this->set_flag_bit(this->flag_subtract, subtract);
 }
 
 uint16_t Z80::hl()
@@ -236,11 +237,11 @@ void Z80::instruction_JP(Z80* cpu, uint8_t opcode)
   {
     case 0:
       // not-zero
-      condition_true = cpu->flags_get_zero();
+      condition_true = !cpu->get_flag_bit(cpu->flag_zero);
       break;
     case 1:
       // zero
-      condition_true = !cpu->flags_get_zero();
+      condition_true = cpu->get_flag_bit(cpu->flag_zero);
       break;
     case 2:
       // no-carry
@@ -269,6 +270,45 @@ void Z80::instruction_JP(Z80* cpu, uint8_t opcode)
   if(condition_true) cpu->pc = cpu->combine_uint8_to_uint16(h, l);
 }
 
+void Z80::instruction_ALU(Z80* cpu, uint8_t opcode)
+{
+  cpu->decode_1b(opcode);
+
+  uint8_t operand = cpu->x == 2 ? cpu->r(cpu->z) : cpu->fetch();
+
+  uint16_t val = 0;
+
+  switch(cpu->y)
+  {
+    case 0:
+      // ADD A,r[z]
+    case 1:
+      // ADC A,r[z]
+      val = cpu->ra + operand;
+
+      // if ADC, add carry too
+      if(cpu->y == 1) val += (uint8_t)cpu->get_flag_bit(cpu->flag_carry);
+      
+      cpu->ra = val;
+      cpu->set_flag_bit(0, cpu->is_bit_set(val, 8));
+      break;
+    case 2:
+      // SUB A,r[z]
+    case 3:
+      // SBC A,r[z]
+      val = cpu->ra - operand;
+
+      // if SBC, subtract carry too
+      if(cpu->y == 1) val -= (uint8_t)cpu->get_flag_bit(cpu->flag_carry);
+      
+      cpu->ra = val;
+      cpu->set_flag_bit(0, cpu->is_bit_set(val, 8));
+      break;
+    default:
+      break;
+  }
+}
+
 void Z80::run()
 {
   this->running = true;
@@ -293,7 +333,10 @@ void Z80::dump_registers()
 {
   printf("\nA=%u\tB=%u\tC=%u\tD=%u\n", this->ra, this->rb, this->rc, this->rd);
   printf("E=%u\tF=%u\tH=%u\tL=%u\n", this->re, this->rf, this->rh, this->rl);
-  printf("PC=%u\tSP=%u\tHL=%u\nmem: ", this->pc, this->sp, this->memory[this->hl()]);
+  printf("PC=%u\tSP=%u\tHL=%u\n", this->pc, this->sp, this->memory[this->hl()]);
+
+  std::bitset<8> flags(this->rf);
+  printf("flags=%s\nmem: ", flags.to_string().c_str());
 
   const int lookahead_size = 5;
   for(int i = this->pc; i < sizeof(this->memory) && i < this->pc+lookahead_size; i++)
