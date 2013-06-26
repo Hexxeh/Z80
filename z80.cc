@@ -54,6 +54,18 @@ bool Z80::get_flag_bit(uint8_t bit_num)
   return this->is_bit_set(this->rf, bit_num);
 }
 
+void Z80::flags_update_carry(uint16_t val)
+{
+  this->set_flag_bit(0, this->is_bit_set(val, 8));
+}
+
+
+void Z80::flags_update_subtract(bool subtract)
+{
+  this->set_flag_bit(this->flag_subtract, subtract);
+}
+
+
 void Z80::flags_update_zero(uint8_t val)
 {
   this->set_flag_bit(this->flag_zero, val == 0);
@@ -66,11 +78,6 @@ void Z80::flags_update_sign(uint8_t val)
     {
       cout << "we're negative!" << endl;
     }
-}
-
-void Z80::flags_update_subtract(bool subtract)
-{
-  this->set_flag_bit(this->flag_subtract, subtract);
 }
 
 uint16_t Z80::hl()
@@ -278,12 +285,14 @@ void Z80::instruction_ALU(Z80* cpu, uint8_t opcode)
 
   uint16_t val = 0;
 
+  cpu->flags_update_subtract(false);
+
   switch(cpu->y)
   {
     case 0:
-      // ADD A,r[z]
+      // ADD A,operand
     case 1:
-      // ADC A,r[z]
+      // ADC A,operand
       val = cpu->ra + operand;
 
       // if ADC, add carry too
@@ -293,16 +302,35 @@ void Z80::instruction_ALU(Z80* cpu, uint8_t opcode)
       cpu->set_flag_bit(0, cpu->is_bit_set(val, 8));
       break;
     case 2:
-      // SUB A,r[z]
+      // SUB A,operand
     case 3:
-      // SBC A,r[z]
+      // SBC A,operand
       val = cpu->ra - operand;
 
       // if SBC, subtract carry too
       if(cpu->y == 1) val -= (uint8_t)cpu->get_flag_bit(cpu->flag_carry);
       
       cpu->ra = val;
-      cpu->set_flag_bit(0, cpu->is_bit_set(val, 8));
+      cpu->flags_update_carry(val);
+      cpu->flags_update_subtract(true);
+      break;
+    case 4:
+      // AND A,operand
+      cpu->ra &= operand;
+      break;
+    case 5:
+      // XOR A,operand
+      cpu->ra ^= operand;
+      break;
+    case 6:
+      // OR A, operand
+      cpu->ra |= operand;
+      break;
+    case 7:
+      // CP A, operand
+      // just SUB with the result thrown away
+      val = cpu->ra - operand;
+      cpu->flags_update_carry(val);
       break;
     default:
       break;
@@ -313,6 +341,7 @@ void Z80::run()
 {
   this->running = true;
 
+  this->dump_registers();
   while(this->running)
   {
     uint8_t opcode = this->fetch();

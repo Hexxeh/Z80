@@ -14,14 +14,6 @@ class Z80
     static const uint8_t flag_zero = 6;
     static const uint8_t flag_sign = 7;
 
-    /* rf bit meanings:
-
-        0: carry - result did not fit in register
-        1: subtract - was last operation a subtraction
-        2: parity/overflow - 
-
-    */
-
     uint8_t ra, rb, rc, rd, re, rf, rh, rl;
     uint16_t sp, pc;
     uint8_t memory[mem_size];
@@ -40,10 +32,10 @@ class Z80
     void set_flag_bit(uint8_t bit_num, bool set);
     bool get_flag_bit(uint8_t bit_num);
 
-    void flags_update_zero(uint8_t val);
-    bool flags_get_zero();
-    void flags_update_sign(uint8_t val);
+    void flags_update_carry(uint16_t val);
     void flags_update_subtract(bool subtract);
+    void flags_update_zero(uint8_t val);
+    void flags_update_sign(uint8_t val);
 
     void r(uint8_t ri, uint8_t val);
     uint8_t r(uint8_t ri);

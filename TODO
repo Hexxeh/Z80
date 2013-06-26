@@ -1,0 +1,5 @@
+Z80 emulator TODO:
+
+ - Research and setup memory map
+ - Have some kind of MMIO
+ - Implement a virtual serial port
